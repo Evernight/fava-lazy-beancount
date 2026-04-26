@@ -6,6 +6,8 @@ export interface Account {
   type: string;
   status: "Opened" | "Missing" | "Closed";
   currencies: string[];
+  filename: string;
+  lineno: number | null;
 }
 
 export function useAccounts() {

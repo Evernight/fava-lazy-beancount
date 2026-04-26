@@ -60,12 +60,16 @@ class FavaLazyBeancount(FavaExtensionBase):
 
             account_type = account.split(":")[0]
             currencies = list(open_entry.currencies) if open_entry.currencies else []
+            filename = open_entry.meta.get("filename", "") if not is_auto else ""
+            lineno = open_entry.meta.get("lineno", None) if not is_auto else None
 
             accounts.append({
                 "account": account,
                 "type": account_type,
                 "status": status,
                 "currencies": currencies,
+                "filename": filename,
+                "lineno": lineno,
             })
 
         accounts.sort(key=lambda a: a["account"])

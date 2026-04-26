@@ -1,4 +1,4 @@
-import { Alert, Box, Chip, CircularProgress, InputAdornment, Stack, TextField } from "@mui/material";
+import { Alert, Box, Chip, CircularProgress, InputAdornment, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import {
   DataGrid,
@@ -60,6 +60,27 @@ const columns: GridColDef<Account>[] = [
     ),
   },
   {
+    field: "filename",
+    headerName: "Defined",
+    flex: 2,
+    minWidth: 160,
+    renderCell: (params: GridRenderCellParams<Account, string>) => {
+      const full = params.value ?? "";
+      if (!full) return <Typography variant="body2" color="text.disabled">—</Typography>;
+      const base = full.split("/").pop() ?? full;
+      const lineno = params.row.lineno;
+      const label = lineno != null ? `${base}:${lineno}` : base;
+      const tooltip = lineno != null ? `${full}:${lineno}` : full;
+      return (
+        <Tooltip title={tooltip} placement="top">
+          <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: "0.8rem" }}>
+            {label}
+          </Typography>
+        </Tooltip>
+      );
+    },
+  },
+  {
     field: "currencies",
     headerName: "Currencies",
     flex: 2,
@@ -77,7 +98,7 @@ const columns: GridColDef<Account>[] = [
 ];
 
 const FUSE_OPTIONS: IFuseOptions<Account> = {
-  keys: ["account", "type", "status", "currencies"],
+  keys: ["account", "type", "status", "currencies", "filename"],
   threshold: 0.35,
   ignoreLocation: true,
 };
