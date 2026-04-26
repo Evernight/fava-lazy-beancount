@@ -1,10 +1,12 @@
-import { Alert, Box, Chip, CircularProgress, Stack } from "@mui/material";
+import { Alert, Box, Chip, CircularProgress, InputAdornment, Stack, TextField } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 import {
   DataGrid,
   GridColDef,
   GridRenderCellParams,
-  GridToolbar,
 } from "@mui/x-data-grid";
+import Fuse, { type IFuseOptions } from "fuse.js";
+import { useMemo, useState } from "react";
 import { useAccounts, type Account } from "../api/accounts";
 
 type ChipColor = "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning";
@@ -63,9 +65,9 @@ const columns: GridColDef<Account>[] = [
     flex: 2,
     minWidth: 160,
     sortable: false,
-    renderCell: (params: GridRenderCellParams<Account, string[]>) => (
+    renderCell: (params: GridRenderCellParams<Account, string>) => (
       <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-        {(params.value ?? []).map((c) => (
+        {(params.row.currencies ?? []).map((c) => (
           <Chip key={c} label={c} size="small" variant="outlined" />
         ))}
       </Stack>
@@ -74,8 +76,22 @@ const columns: GridColDef<Account>[] = [
   },
 ];
 
+const FUSE_OPTIONS: IFuseOptions<Account> = {
+  keys: ["account", "type", "status", "currencies"],
+  threshold: 0.35,
+  ignoreLocation: true,
+};
+
 export function AccountsTab() {
   const { data, isLoading, error } = useAccounts();
+  const [query, setQuery] = useState("");
+
+  const fuse = useMemo(() => new Fuse(data ?? [], FUSE_OPTIONS), [data]);
+
+  const rows = useMemo(() => {
+    if (!query.trim()) return data ?? [];
+    return fuse.search(query).map((r) => r.item);
+  }, [fuse, query, data]);
 
   if (isLoading) {
     return (
@@ -90,25 +106,37 @@ export function AccountsTab() {
   }
 
   return (
-    <Box sx={{ height: "calc(100vh - 160px)", width: "100%" }}>
-      <DataGrid
-        rows={data ?? []}
-        columns={columns}
-        getRowId={(row) => row.account}
-        slots={{ toolbar: GridToolbar }}
+    <Box sx={{ display: "flex", flexDirection: "column", height: "calc(100vh - 160px)", gap: 1 }}>
+      <TextField
+        size="small"
+        placeholder="Search accounts…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
         slotProps={{
-          toolbar: {
-            showQuickFilter: true,
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
           },
         }}
-        disableRowSelectionOnClick
-        density="compact"
-        initialState={{
-          sorting: {
-            sortModel: [{ field: "account", sort: "asc" }],
-          },
-        }}
+        sx={{ width: 320 }}
       />
+      <Box sx={{ flex: 1 }}>
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          getRowId={(row) => row.account}
+          disableRowSelectionOnClick
+          density="compact"
+          initialState={{
+            sorting: {
+              sortModel: [{ field: "account", sort: "asc" }],
+            },
+          }}
+        />
+      </Box>
     </Box>
   );
 }
