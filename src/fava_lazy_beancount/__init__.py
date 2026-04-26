@@ -10,6 +10,7 @@ from beancount.core import data
 from fava.ext import FavaExtensionBase
 from fava.ext import extension_endpoint
 from fava.helpers import FavaAPIError
+from flask import request
 
 
 def api_response(func):
@@ -79,6 +80,9 @@ class FavaLazyBeancount(FavaExtensionBase):
     @api_response
     def api_missing_accounts(self) -> str:
         """Return beancount Open directives for auto-inserted (missing) accounts."""
+        fixed_date = request.args.get("fixed_date", "true").lower() != "false"
+        show_currencies = request.args.get("currencies", "true").lower() != "false"
+
         entries = self.ledger.all_entries
         lines = []
 
@@ -88,9 +92,9 @@ class FavaLazyBeancount(FavaExtensionBase):
             if not entry.meta.get("auto_accounts"):
                 continue
 
-            date_str = entry.date.strftime("%Y-%m-%d")
+            date_str = "1970-01-01" if fixed_date else entry.date.strftime("%Y-%m-%d")
             currencies_str = ""
-            if entry.currencies:
+            if show_currencies and entry.currencies:
                 currencies_str = " " + ",".join(sorted(entry.currencies))
 
             lines.append(f"{date_str} open {entry.account}{currencies_str}")
