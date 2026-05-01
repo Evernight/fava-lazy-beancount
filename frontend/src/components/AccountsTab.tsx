@@ -39,6 +39,8 @@ const columns: GridColDef<Account>[] = [
     headerName: "Type",
     flex: 1,
     minWidth: 120,
+    type: "singleSelect",
+    valueOptions: ["Assets", "Liabilities", "Equity", "Expenses", "Income"],
     renderCell: (params: GridRenderCellParams<Account, string>) => (
       <Chip
         label={params.value}
@@ -52,6 +54,8 @@ const columns: GridColDef<Account>[] = [
     headerName: "Status",
     flex: 1,
     minWidth: 120,
+    type: "singleSelect",
+    valueOptions: ["Opened", "Closed", "Auto (Ignored)", "Auto (Not defined)", "Missing"],
     renderCell: (params: GridRenderCellParams<Account, string>) => (
       <Chip
         label={params.value}
