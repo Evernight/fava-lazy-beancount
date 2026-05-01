@@ -21,8 +21,10 @@ const TYPE_COLORS: Record<string, ChipColor> = {
 
 const STATUS_COLORS: Record<string, ChipColor> = {
   Opened: "success",
-  Missing: "warning",
   Closed: "default",
+  "Auto (Ignored)": "info",
+  "Auto (Not defined)": "warning",
+  Missing: "error",
 };
 
 const columns: GridColDef<Account>[] = [
@@ -55,7 +57,7 @@ const columns: GridColDef<Account>[] = [
         label={params.value}
         color={STATUS_COLORS[params.value ?? ""] ?? "default"}
         size="small"
-        variant={params.value === "Closed" ? "outlined" : "filled"}
+        variant={params.value === "Closed" || params.value === "Auto (Ignored)" ? "outlined" : "filled"}
       />
     ),
   },
@@ -144,7 +146,7 @@ export function AccountsTab() {
         }}
         sx={{ width: 320 }}
       />
-      <Box sx={{ flex: 1 }}>
+      <Box sx={{ flex: 1, "& .MuiDataGrid-cell": { display: "flex", alignItems: "center" } }}>
         <DataGrid
           rows={rows}
           columns={columns}

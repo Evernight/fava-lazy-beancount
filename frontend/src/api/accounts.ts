@@ -4,7 +4,7 @@ import { fetchJSON } from "./api";
 export interface Account {
   account: string;
   type: string;
-  status: "Opened" | "Missing" | "Closed";
+  status: "Opened" | "Closed" | "Auto (Ignored)" | "Auto (Not defined)" | "Missing";
   currencies: string[];
   filename: string;
   lineno: number | null;

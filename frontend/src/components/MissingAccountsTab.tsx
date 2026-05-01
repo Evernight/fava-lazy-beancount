@@ -4,7 +4,10 @@ import {
   Button,
   Checkbox,
   CircularProgress,
+  Divider,
   FormControlLabel,
+  FormGroup,
+  Paper,
   Snackbar,
   Typography,
 } from "@mui/material";
@@ -89,9 +92,10 @@ function CodeMirrorViewer({ content }: CodeMirrorViewerProps) {
 export function MissingAccountsTab() {
   const [fixedDate, setFixedDate] = useState(true);
   const [currencies, setCurrencies] = useState(true);
+  const [includeIgnored, setIncludeIgnored] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const { data, isLoading, error } = useMissingAccounts({ fixedDate, currencies });
+  const { data, isLoading, error } = useMissingAccounts({ fixedDate, currencies, includeIgnored });
 
   const handleCopy = async () => {
     if (data) {
@@ -101,64 +105,76 @@ export function MissingAccountsTab() {
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-        <Typography variant="body2" color="text.secondary" sx={{ flex: 1, minWidth: 200 }}>
-          The following accounts are auto-inserted by <code>auto_accounts</code> or missing from the ledger. Copy and add them to your beancount file.
+    <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start" }}>
+      <Paper variant="outlined" sx={{ p: 2, flexShrink: 0, minWidth: 220 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          Options
         </Typography>
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={fixedDate}
-              onChange={(e) => setFixedDate(e.target.checked)}
-              size="small"
-            />
-          }
-          label={
-            <Typography variant="body2">
-              Fixed open date <Typography component="span" variant="body2" color="text.secondary">({fixedDate ? "1970-01-01" : "first encounter"})</Typography>
-            </Typography>
-          }
-        />
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={currencies}
-              onChange={(e) => setCurrencies(e.target.checked)}
-              size="small"
-            />
-          }
-          label={<Typography variant="body2">Specify currencies</Typography>}
-        />
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<ContentCopyIcon />}
-          onClick={handleCopy}
-          disabled={!data || data.trim() === ""}
-          sx={{ flexShrink: 0 }}
-        >
-          Copy
-        </Button>
-      </Box>
-
-      {isLoading && (
-        <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-          <CircularProgress />
+        <FormGroup>
+          <FormControlLabel
+            control={
+              <Checkbox checked={fixedDate} onChange={(e) => setFixedDate(e.target.checked)} size="small" />
+            }
+            label={
+              <Box>
+                <Typography variant="body2">Fixed open date</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {fixedDate ? "1970-01-01" : "first encounter"}
+                </Typography>
+              </Box>
+            }
+          />
+          <FormControlLabel
+            control={
+              <Checkbox checked={currencies} onChange={(e) => setCurrencies(e.target.checked)} size="small" />
+            }
+            label={<Typography variant="body2">Specify currencies</Typography>}
+          />
+          <Divider sx={{ my: 1 }} />
+          <FormControlLabel
+            control={
+              <Checkbox checked={includeIgnored} onChange={(e) => setIncludeIgnored(e.target.checked)} size="small" />
+            }
+            label={<Typography variant="body2">Include Auto (Ignored)</Typography>}
+          />
+        </FormGroup>
+        <Box sx={{ mt: 2 }}>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<ContentCopyIcon />}
+            onClick={handleCopy}
+            disabled={!data || data.trim() === ""}
+            fullWidth
+          >
+            Copy
+          </Button>
         </Box>
-      )}
+      </Paper>
 
-      {error && <Alert severity="error">{String(error)}</Alert>}
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Accounts auto-inserted by <code>auto_accounts</code> or missing from the ledger. Copy and add them to your beancount file.
+        </Typography>
 
-      {!isLoading && !error && (!data || data.trim() === "") && (
-        <Alert severity="success">
-          No missing accounts — all accounts are explicitly opened in the ledger.
-        </Alert>
-      )}
+        {isLoading && (
+          <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+            <CircularProgress />
+          </Box>
+        )}
 
-      {!isLoading && !error && data && data.trim() !== "" && (
-        <CodeMirrorViewer content={data} />
-      )}
+        {error && <Alert severity="error">{String(error)}</Alert>}
+
+        {!isLoading && !error && (!data || data.trim() === "") && (
+          <Alert severity="success">
+            No missing accounts — all accounts are explicitly opened in the ledger.
+          </Alert>
+        )}
+
+        {!isLoading && !error && data && data.trim() !== "" && (
+          <CodeMirrorViewer content={data} />
+        )}
+      </Box>
 
       <Snackbar
         open={copied}

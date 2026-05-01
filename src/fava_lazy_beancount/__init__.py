@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import re
 import traceback
 from typing import Any
 
@@ -11,6 +12,19 @@ from fava.ext import FavaExtensionBase
 from fava.ext import extension_endpoint
 from fava.helpers import FavaAPIError
 from flask import request
+
+_ACCOUNT_NOT_OPEN_RE = re.compile(r"Account '([^']+)' is not open")
+
+
+def _extract_error_missing_accounts(errors: list) -> set[str]:
+    """Find accounts mentioned in beancount 'not open' validation errors."""
+    missing: set[str] = set()
+    for error in errors:
+        msg = getattr(error, "message", "") or ""
+        m = _ACCOUNT_NOT_OPEN_RE.search(msg)
+        if m:
+            missing.add(m.group(1))
+    return missing
 
 
 def api_response(func):
@@ -49,11 +63,16 @@ class FavaLazyBeancount(FavaExtensionBase):
             elif isinstance(entry, data.Close):
                 closed_accounts.add(entry.account)
 
+        error_missing = _extract_error_missing_accounts(self.ledger.errors)
+
         accounts = []
         for account, open_entry in opened_accounts.items():
             is_auto = bool(open_entry.meta.get("auto_accounts"))
             if is_auto:
-                status = "Missing"
+                if open_entry.meta.get("auto_accounts_ignored"):
+                    status = "Auto (Ignored)"
+                else:
+                    status = "Auto (Not defined)"
             elif account in closed_accounts:
                 status = "Closed"
             else:
@@ -73,6 +92,17 @@ class FavaLazyBeancount(FavaExtensionBase):
                 "lineno": lineno,
             })
 
+        # Accounts that appear in errors but have no Open directive at all
+        for account in sorted(error_missing - opened_accounts.keys()):
+            accounts.append({
+                "account": account,
+                "type": account.split(":")[0],
+                "status": "Missing",
+                "currencies": [],
+                "filename": "",
+                "lineno": None,
+            })
+
         accounts.sort(key=lambda a: a["account"])
         return accounts
 
@@ -82,6 +112,7 @@ class FavaLazyBeancount(FavaExtensionBase):
         """Return beancount Open directives for auto-inserted (missing) accounts."""
         fixed_date = request.args.get("fixed_date", "true").lower() != "false"
         show_currencies = request.args.get("currencies", "true").lower() != "false"
+        include_ignored = request.args.get("include_ignored", "false").lower() != "false"
 
         entries = self.ledger.all_entries
         lines = []
@@ -90,6 +121,8 @@ class FavaLazyBeancount(FavaExtensionBase):
             if not isinstance(entry, data.Open):
                 continue
             if not entry.meta.get("auto_accounts"):
+                continue
+            if entry.meta.get("auto_accounts_ignored") and not include_ignored:
                 continue
 
             date_str = "1970-01-01" if fixed_date else entry.date.strftime("%Y-%m-%d")
