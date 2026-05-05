@@ -1,4 +1,4 @@
-import { Alert, Box, Chip, CircularProgress, InputAdornment, Stack, TextField, Tooltip, Typography } from "@mui/material";
+import { Alert, Box, Chip, CircularProgress, InputAdornment, Link, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import {
   DataGrid,
@@ -66,6 +66,32 @@ const columns: GridColDef<Account>[] = [
     ),
   },
   {
+    field: "open_date",
+    headerName: "Open Date",
+    flex: 1,
+    minWidth: 110,
+    type: "date",
+    valueGetter: (value: string | null) => (value ? new Date(value) : null),
+    renderCell: (params: GridRenderCellParams<Account, Date>) => (
+      <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: "0.8rem" }}>
+        {params.row.open_date ?? "—"}
+      </Typography>
+    ),
+  },
+  {
+    field: "close_date",
+    headerName: "Close Date",
+    flex: 1,
+    minWidth: 110,
+    type: "date",
+    valueGetter: (value: string | null) => (value ? new Date(value) : null),
+    renderCell: (params: GridRenderCellParams<Account, Date>) => (
+      <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: "0.8rem" }}>
+        {params.row.close_date ?? "—"}
+      </Typography>
+    ),
+  },
+  {
     field: "filename",
     headerName: "Defined",
     flex: 2,
@@ -77,11 +103,18 @@ const columns: GridColDef<Account>[] = [
       const lineno = params.row.lineno;
       const label = lineno != null ? `${base}:${lineno}` : base;
       const tooltip = lineno != null ? `${full}:${lineno}` : full;
+      const content = (
+        <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: "0.8rem" }}>
+          {label}
+        </Typography>
+      );
       return (
         <Tooltip title={tooltip} placement="top">
-          <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: "0.8rem" }}>
-            {label}
-          </Typography>
+          {lineno != null ? (
+            <Link href={getFavaEditorUrl(full, lineno)} underline="hover" color="inherit">
+              {content}
+            </Link>
+          ) : content}
         </Tooltip>
       );
     },
@@ -102,6 +135,12 @@ const columns: GridColDef<Account>[] = [
     valueGetter: (value: string[]) => (value ?? []).join(", "),
   },
 ];
+
+function getFavaEditorUrl(filename: string, lineno: number): string {
+  const base = window.location.pathname.split("/extension/")[0];
+  const params = new URLSearchParams({ file_path: filename, line: String(lineno) });
+  return `${base}/editor/?${params}`;
+}
 
 const FUSE_OPTIONS: IFuseOptions<Account> = {
   keys: ["account", "type", "status", "currencies", "filename"],

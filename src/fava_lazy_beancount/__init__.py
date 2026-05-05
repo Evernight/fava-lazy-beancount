@@ -54,26 +54,27 @@ class FavaLazyBeancount(FavaExtensionBase):
         """Return all accounts with type, status, and currencies."""
         entries = self.ledger.all_entries
 
-        closed_accounts: set[str] = set()
+        closed_accounts: dict[str, data.Close] = {}
         opened_accounts: dict[str, data.Open] = {}
 
         for entry in entries:
             if isinstance(entry, data.Open):
                 opened_accounts[entry.account] = entry
             elif isinstance(entry, data.Close):
-                closed_accounts.add(entry.account)
+                closed_accounts[entry.account] = entry
 
         error_missing = _extract_error_missing_accounts(self.ledger.errors)
 
         accounts = []
         for account, open_entry in opened_accounts.items():
             is_auto = bool(open_entry.meta.get("auto_accounts"))
+            close_entry = closed_accounts.get(account)
             if is_auto:
                 if open_entry.meta.get("auto_accounts_ignored"):
                     status = "Auto (Ignored)"
                 else:
                     status = "Auto (Not defined)"
-            elif account in closed_accounts:
+            elif close_entry is not None:
                 status = "Closed"
             else:
                 status = "Opened"
@@ -90,6 +91,8 @@ class FavaLazyBeancount(FavaExtensionBase):
                 "currencies": currencies,
                 "filename": filename,
                 "lineno": lineno,
+                "open_date": str(open_entry.date) if not is_auto else None,
+                "close_date": str(close_entry.date) if close_entry is not None else None,
             })
 
         # Accounts that appear in errors but have no Open directive at all
@@ -101,6 +104,8 @@ class FavaLazyBeancount(FavaExtensionBase):
                 "currencies": [],
                 "filename": "",
                 "lineno": None,
+                "open_date": None,
+                "close_date": None,
             })
 
         accounts.sort(key=lambda a: a["account"])

@@ -8,6 +8,8 @@ export interface Account {
   currencies: string[];
   filename: string;
   lineno: number | null;
+  open_date: string | null;
+  close_date: string | null;
 }
 
 export function useAccounts() {
