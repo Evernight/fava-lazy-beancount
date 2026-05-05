@@ -91,7 +91,7 @@ class FavaLazyBeancount(FavaExtensionBase):
                 "currencies": currencies,
                 "filename": filename,
                 "lineno": lineno,
-                "open_date": str(open_entry.date) if not is_auto else None,
+                "open_date": str(open_entry.date),
                 "close_date": str(close_entry.date) if close_entry is not None else None,
             })
 
