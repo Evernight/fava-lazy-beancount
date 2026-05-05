@@ -33,6 +33,13 @@ const columns: GridColDef<Account>[] = [
     headerName: "Account",
     flex: 3,
     minWidth: 200,
+    renderCell: (params: GridRenderCellParams<Account, string>) => (
+      <Link href={getFavaAccountUrl(params.value ?? "")} underline="hover" color="inherit">
+        <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: "0.8rem" }}>
+          {params.value}
+        </Typography>
+      </Link>
+    ),
   },
   {
     field: "type",
@@ -136,10 +143,17 @@ const columns: GridColDef<Account>[] = [
   },
 ];
 
+function getFavaBase(): string {
+  return window.location.pathname.split("/extension/")[0];
+}
+
 function getFavaEditorUrl(filename: string, lineno: number): string {
-  const base = window.location.pathname.split("/extension/")[0];
   const params = new URLSearchParams({ file_path: filename, line: String(lineno) });
-  return `${base}/editor/?${params}`;
+  return `${getFavaBase()}/editor/?${params}`;
+}
+
+function getFavaAccountUrl(account: string): string {
+  return `${getFavaBase()}/account/${account}/`;
 }
 
 const FUSE_OPTIONS: IFuseOptions<Account> = {
