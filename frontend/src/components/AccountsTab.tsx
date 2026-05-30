@@ -8,6 +8,7 @@ import {
 import Fuse, { type IFuseOptions } from "fuse.js";
 import { useMemo, useState } from "react";
 import { useAccounts, type Account } from "../api/accounts";
+import { NewAccountField } from "./NewAccountField";
 
 type ChipColor = "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning";
 
@@ -165,8 +166,13 @@ const FUSE_OPTIONS: IFuseOptions<Account> = {
 export function AccountsTab() {
   const { data, isLoading, error } = useAccounts();
   const [query, setQuery] = useState("");
+  const [feedback, setFeedback] = useState<{ severity: "success" | "error"; message: string } | null>(
+    null,
+  );
 
   const fuse = useMemo(() => new Fuse(data ?? [], FUSE_OPTIONS), [data]);
+
+  const accountNames = useMemo(() => (data ?? []).map((a) => a.account).sort(), [data]);
 
   const rows = useMemo(() => {
     if (!query.trim()) return data ?? [];
@@ -187,22 +193,34 @@ export function AccountsTab() {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "calc(100vh - 160px)", gap: 1 }}>
-      <TextField
-        size="small"
-        placeholder="Search accounts…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        slotProps={{
-          input: {
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon fontSize="small" />
-              </InputAdornment>
-            ),
-          },
-        }}
-        sx={{ width: 320 }}
-      />
+      <Stack direction="row" spacing={1} alignItems="flex-start" useFlexGap flexWrap="wrap">
+        <TextField
+          size="small"
+          placeholder="Search accounts…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            },
+          }}
+          sx={{ width: 320 }}
+        />
+        <NewAccountField
+          accountNames={accountNames}
+          onSuccess={(message) => setFeedback({ severity: "success", message })}
+          onError={(message) => setFeedback({ severity: "error", message })}
+        />
+      </Stack>
+      {feedback ? (
+        <Alert severity={feedback.severity} onClose={() => setFeedback(null)}>
+          {feedback.message}
+        </Alert>
+      ) : null}
       <Box sx={{ flex: 1, "& .MuiDataGrid-cell": { display: "flex", alignItems: "center" } }}>
         <DataGrid
           rows={rows}

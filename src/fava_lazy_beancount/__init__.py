@@ -2,16 +2,25 @@
 
 from __future__ import annotations
 
+import datetime
 import functools
 import re
 import traceback
+from pathlib import Path
 from typing import Any
 
+from beancount.core import account as account_lib
 from beancount.core import data
+from fava.beans import create as entry_create
+from fava.core.file import insert_entry
 from fava.ext import FavaExtensionBase
 from fava.ext import extension_endpoint
 from fava.helpers import FavaAPIError
+from flask import g
 from flask import request
+
+_ACCOUNTS_BEAN_FILENAME = "accounts.bean"
+_DEFAULT_OPEN_DATE = datetime.date(1970, 1, 1)
 
 _ACCOUNT_NOT_OPEN_RE = re.compile(r"Account '([^']+)' is not open")
 
@@ -25,6 +34,26 @@ def _extract_error_missing_accounts(errors: list) -> set[str]:
         if m:
             missing.add(m.group(1))
     return missing
+
+
+def _resolve_accounts_file(ledger: Any, filename: str = _ACCOUNTS_BEAN_FILENAME) -> Path:
+    """Return the absolute path of an included source file by basename."""
+    for path_str in ledger.options["include"]:
+        path = Path(path_str)
+        if path.name == filename:
+            return path
+    raise FavaAPIError(
+        f"No source file named {filename!r} found in ledger includes. "
+        "Add an include for it in your main ledger file.",
+    )
+
+
+def _has_file_backed_open(ledger: Any, account: str) -> bool:
+    for entry in ledger.all_entries:
+        if isinstance(entry, data.Open) and entry.account == account:
+            if not entry.meta.get("auto_accounts"):
+                return True
+    return False
 
 
 def api_response(func):
@@ -110,6 +139,47 @@ class FavaLazyBeancount(FavaExtensionBase):
 
         accounts.sort(key=lambda a: a["account"])
         return accounts
+
+    @extension_endpoint("create_account", methods=["POST"])
+    @api_response
+    def api_create_account(self) -> dict[str, Any]:
+        """Append an Open directive for a new account to accounts.bean."""
+        payload = request.get_json(silent=True) or {}
+        if not isinstance(payload, dict):
+            raise FavaAPIError("Invalid JSON body")
+
+        account = str(payload.get("account", "")).strip()
+        if not account:
+            raise FavaAPIError("Missing account name")
+        if not account_lib.is_valid(account):
+            raise FavaAPIError(f"Invalid account name: {account!r}")
+
+        if _has_file_backed_open(self.ledger, account):
+            raise FavaAPIError(f"Account {account!r} is already defined in the ledger")
+
+        accounts_path = _resolve_accounts_file(self.ledger)
+        meta = data.new_metadata(str(accounts_path), -1)
+        open_entry = entry_create.open(meta, _DEFAULT_OPEN_DATE, account, [])
+
+        fava_options = self.ledger.fava_options
+        self.ledger.changed()
+        path, _updated = insert_entry(
+            open_entry,
+            str(accounts_path),
+            [],
+            fava_options.currency_column,
+            fava_options.indent,
+        )
+        g.ledger.watcher.notify(path)
+        g.ledger.extensions.after_insert_entry(open_entry)
+        g.ledger.changed()
+
+        line = f"{_DEFAULT_OPEN_DATE.isoformat()} open {account}"
+        return {
+            "account": account,
+            "filename": str(path),
+            "line": line,
+        }
 
     @extension_endpoint("missing_accounts")
     @api_response
